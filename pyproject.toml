@@ -1,0 +1,14 @@
+[project]
+name = "wkt"
+version = "0.1.0"
+description = "WKT generator"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+authors = ["MrPowers <matthewkevinpowers@gmail.com>"]
+homepage = "https://github.com/MrPowers/wkt"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]
