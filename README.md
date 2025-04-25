@@ -20,15 +20,78 @@ This library doesn't have any dependencies, so it's easy to install anywhere.
 
 ## Shapely + wkt
 
-TODO
+Let's create a Shapely polygon with `wkt`:
+
+```python
+import wkt
+from shapely import from_wkt
+
+alaska = from_wkt(wkt.us.states.alaska())
+```
+
+Check to make sure that a Shapely Polygon is created:
+
+```python
+type(alaska) # => shapely.geometry.polygon.Polygon
+```
+
+Compute the area of the polygon:
+
+```python
+alaska.area # => 353.4887780300002
+```
 
 ## GeoPandas + wkt
 
-TODO
+Create a GeoPandas DataFrame with `wkt`:
+
+```python
+import geopandas as gpd
+import pandas as pd
+
+data = {
+    "state": ["colorado", "new_mexico"],
+    "geometry": [from_wkt(wkt.us.states.colorado()), from_wkt(wkt.us.states.new_mexico())]
+}
+df = pd.DataFrame(data)
+gdf = gpd.GeoDataFrame(df, geometry="geometry")
+```
+
+Add a column with centroids:
+
+```python
+gdf['centroid'] = gdf.geometry.centroid
+```
+
+Look at the results:
+
+```python
+        state                     geometry                     centroid
+0    colorado  POLYGON ((-109.0448 37.0004,  POINT (-105.54643 38.99855)
+1  new_mexico  POLYGON ((-109.0448 36.9971,  POINT (-106.10366 34.42267)
+```
 
 ## Sedona + wkt
 
-TODO
+Read the Overture Maps Foundation places dataset:
+
+```python
+places = sedona.table("wherobots_open_data.overture_maps_foundation.places_place")
+places.createOrReplaceTempView("places")
+```
+
+Find all the barbecue restaurants in the state of Florida:
+
+```python
+query = f"""
+select * from places
+where
+    categories.primary = 'barbecue_restaurant' and
+    ST_Contains(ST_GeomFromWKT('{wkt.us.states.florida()}'), geometry)
+"""
+res = sedona.sql(query)
+res.count() # => 1386
+```
 
 ## Creating wkts
 
