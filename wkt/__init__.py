@@ -149,3 +149,14 @@ class us:
 
         def wyoming():
             return "POLYGON((-104.0556 41.0037,-104.0584 44.9949,-111.0539 44.9998,-111.0457 40.9986,-104.0556 41.0006,-104.0556 41.0037))"
+
+
+class omf:
+    def country(sedona, country_iso, table_name="division_area"):
+        query = f"""
+        SELECT ST_AsEWKT(geometry) AS wkt
+        FROM {table_name}
+        WHERE subtype = 'country'
+        AND country = '{country_iso}'
+        """
+        return sedona.sql(query).collect()[0][0]
