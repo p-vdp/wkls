@@ -152,11 +152,14 @@ class us:
 
 
 class omf:
-    def country(sedona, country_iso, table_name="division_area"):
+    def __init__(self, sedona):
+        self.sedona = sedona
+
+    def country(self, country_iso, table_name="division_area"):
         query = f"""
         SELECT ST_AsEWKT(geometry) AS wkt
         FROM {table_name}
         WHERE subtype = 'country'
         AND country = '{country_iso}'
         """
-        return sedona.sql(query).collect()[0][0]
+        return self.sedona.sql(query).collect()[0][0]
