@@ -152,14 +152,39 @@ class us:
 
 
 class omf:
-    def __init__(self, sedona):
+    def __init__(self, sedona, table_name="division_area"):
         self.sedona = sedona
+        self.table_name = table_name
 
-    def country(self, country_iso, table_name="division_area"):
+
+    def country(self, country_iso):
         query = f"""
         SELECT ST_AsEWKT(geometry) AS wkt
-        FROM {table_name}
+        FROM {self.table_name}
         WHERE subtype = 'country'
         AND country = '{country_iso}'
+        """
+        return self.sedona.sql(query).collect()[0][0]
+
+
+    def state(self, country_iso, state_iso):
+        query = f"""
+        SELECT ST_AsEWKT(geometry) AS wkt
+        FROM {self.table_name}
+        WHERE subtype = 'region'
+        AND country = '{country_iso}'
+        AND region = '{state_iso}'
+        """
+        return self.sedona.sql(query).collect()[0][0]
+
+
+    def city(self, country_iso, state_iso, city_name):
+        query = f"""
+        SELECT ST_AsEWKT(geometry) AS wkt
+        FROM {self.table_name}
+        WHERE subtype = 'locality'
+        AND country = '{country_iso}'
+        AND region = '{state_iso}'
+        AND names.primary = '{city_name}'
         """
         return self.sedona.sql(query).collect()[0][0]

@@ -12,6 +12,13 @@ wkt.us.states.new_york() # => "POLYGON((-79.7624 42.5142,-79.0672 42.7783..."
 
 `wkt` is interoperable with many Pythonic geospatial tools like Shapely, GeoPandas, Sedona, and Dask!
 
+You can also fetch WKTs from the Overture Maps Foundation tables as follows:
+
+```python
+table_name = "wherobots_open_data.overture_maps_foundation.divisions_division_area"
+wkt.omf(sedona, table_name).state("US", "US-AZ") # => "POLYGON((..."
+```
+
 ## Installation
 
 Just run `pip install wkt`.
@@ -93,67 +100,11 @@ res = sedona.sql(query)
 res.count() # => 1386
 ```
 
-## Creating wkts
+## WKTs from Overture data
 
-Use Overture Maps Foundation Divisions dataset to generate wkts.
+It's easy to get the WKT for countries, states, and cities from the Overture data:
 
-```python
-divisions_df = sedona.table("wherobots_open_data.overture_maps_foundation.divisions_division_area")
-divisions_df.createOrReplaceTempView("division_area")
-```
-
-To generate a wkt of a country use subtype, 'country':
-
-```python
-country_iso = "US" # ISO code of the country
-
-query = f"""
-SELECT ST_AsEWKT(geometry) AS wkt
-FROM division_area
-WHERE subtype = 'country'
-AND country = '{country_iso}'
-"""
-
-wkt = sedona.sql(query).collect()[0][0]
-```
-
-To generate a wkt of a state/region in a country use subtype, 'region':
-
-```python
-country_iso = "US" # ISO code of the country
-state_iso = "US-AZ" # ISO code of the state
-
-query = f"""
-SELECT ST_AsEWKT(geometry) AS wkt
-FROM division_area
-WHERE subtype = 'region'
-AND country = '{country_iso}'
-AND region = '{state_iso}'
-"""
-
-wkt = sedona.sql(query).collect()[0][0]
-```
-
-To generate a wkt of a city use subtype, 'locality':
-
-Make sure to use the country and state filter when filtering by `city_name`.  There may be more than one city with the same name. 
-
-```python
-country_iso = "US" # ISO code of the country
-state_iso = "US-AZ" # ISO code of the state
-city_name = 'Phoenix'
-
-query = f"""
-SELECT ST_AsEWKT(geometry) AS wkt
-FROM division_area
-WHERE subtype = 'locality'
-AND country = '{country_iso}'
-AND region = '{state_iso}'
-AND names.primary = '{city_name}'
-"""
-
-wkt = sedona.sql(query).collect()[0][0]
-```
+TODO
 
 ## Contributing
 
