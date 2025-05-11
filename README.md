@@ -104,7 +104,24 @@ res.count() # => 1386
 
 It's easy to get the WKT for countries, states, and cities from the Overture data:
 
-TODO
+Here's how to get the WKT for a country:
+
+```python
+table_name = "wherobots_open_data.overture_maps_foundation.divisions_division_area"
+wkt.omf(sedona, table_name).country("US") # => "POLYGON((..."
+```
+
+Here's how to get the WKT for a state:
+
+```python
+wkt.omf(sedona, table_name).state("US", "US-AZ") # => "POLYGON((..."
+```
+
+Here is how to get the WKT for a city:
+
+```python
+wkt.omf(sedona, table_name).city("US", "US-AZ", "Phoenix") # => "POLYGON((..."
+```
 
 ## Contributing
 
