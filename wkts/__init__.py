@@ -1,6 +1,8 @@
+import duckdb
 import importlib.resources
 import sys
-from . import data, util
+
+from . import data
 
 
 class StaticWKL(str):
@@ -16,18 +18,17 @@ class StaticWKL(str):
 
     def __getattr__(self, name):
         fqn = f"{self.name}.{name}" if self.name else name
-        wkl = _DATABASE.get(fqn)
-        if wkl:
-            return wkl
-        raise AttributeError(f"WKT for '{fqn}' does not exist")
+        df = duckdb.sql(f"SELECT ST_AsText(geom) AS geom FROM wkls WHERE name = '{fqn}'").df()
+        if len(df) != 1:
+            raise AttributeError(f"WKT for '{fqn}' does not exist")
+        return StaticWKL(fqn, df["geom"][0])
 
 
 # Seed the database of Well-Known Locations with all available data.
-data_files = [
-    file for file in importlib.resources.files(data).iterdir()
-    if file.is_file() and file.name.endswith('.parquet')
-]
-_DATABASE = util.read_wkt_data(data_files, StaticWKL)
+duckdb.load_extension("spatial")
+duckdb.sql(f"""CREATE TABLE wkls AS
+    SELECT geom_id, name, aliases, geom
+    FROM '{importlib.resources.files(data)}/*.parquet'""")
 
 # Rebind ourselves to a top-level dummy WKL that represents the world.
 sys.modules["wkts"] = StaticWKL("", "POLYGON()")
