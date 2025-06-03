@@ -1,15 +1,22 @@
 [project]
-name = "wkt"
-version = "0.1.4"
-description = "WKT generator"
+name = "wkts"
+version = "0.2.0"
+description = "WKTs for WKLs: a library for easily leveraging the WKTs (Well Known Text) geometries of WKLs (Well Known Locations)"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "duckdb>=1.3.0",
+    "geopandas>=1.1.0",
+    "numpy>=2.2.6",
+]
 authors = [
-    { name = "MrPowers", email = "matthewkevinpowers@gmail.com" }
+    { name = "Matthew Powers", email = "mpowers@wherobots.com" },
+    { name = "Pranav Toggi", email = "pranav@wherobots.com" },
+    { name = "Maxime Petazzoni", email = "max@wherobots.com" }
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.3.5",
+    "ruff>=0.11.12",
 ]

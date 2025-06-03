@@ -1,16 +1,44 @@
-# wkt
+# WKT (Well-Known Text) geometries for WKLs (Well-Known Locations)
 
-wkt makes it easy to grab Well-Known Text strings for countries, states, and cities around the world.
+`wkts` makes it easy to grab Well-Known Text geometry strings for
+Well-Known Locations such as countries, regions and states, and major
+cities around the world.
+
+It's impossible to be comprehensive in this library. If something is
+missing, please propose it and we will work to integrate it! There also
+may be situations with name conflicts that make it impossible to include
+certain locations; as a result, `wkts` is by nature _opinionated_ about
+what is available.
+
+`wkts` is interoperable with many Pythonic geospatial tools like
+Shapely, GeoPandas, Sedona, and Dask.
+
+## Installation
+
+```
+pip install wkts
+```
+
+This library doesn't have any dependencies, so it's easy to install anywhere.
+
+## Usage
+
+`wkts` provides two mechanisms for accessing WKT geometries:
+
+1. A hierarchy of Python attributes that you can access and reference
+   directly; this provides the most direct and efficient access, but
+   isn't exhaustive.
+2. Helpers to query Overture Maps Foundation data using a provided
+   Apache Sedona context, for flexible queries.
+
+### Simple usage
 
 Here's how you can grab the polygon for New York State for example:
 
 ```python
-import wkt
-
-wkt.us.states.new_york() # => "POLYGON((-79.7624 42.5142,-79.0672 42.7783..."
+import wkts
+print(wkt.us.ny) # => "POLYGON((-79.7624 42.5142,-79.0672 42.7783..."
 ```
-
-`wkt` is interoperable with many Pythonic geospatial tools like Shapely, GeoPandas, Sedona, and Dask!
 
 You can also fetch WKTs from the Overture Maps Foundation tables as follows:
 
@@ -19,46 +47,32 @@ table_name = "wherobots_open_data.overture_maps_foundation.divisions_division_ar
 wkt.omf(sedona, table_name).state("US", "US-AZ") # => "POLYGON((..."
 ```
 
-## Installation
+### Shapely + WKTs
 
-Just run `pip install wkt`.
-
-This library doesn't have any dependencies, so it's easy to install anywhere.
-
-## Shapely + wkt
-
-Let's create a Shapely polygon with `wkt`:
+To create a Shapely geometry using a WKT value from `wkts`:
 
 ```python
-import wkt
-from shapely import from_wkt
+import shapely
+import wkts
 
-alaska = from_wkt(wkt.us.states.alaska())
+alaska = shapely.from_wkt(wkts.us.ak)
+print(type(alaska))   # => shapely.geometry.polygon.Polygon
+print(alaska.area)    # => 353.4887780300002
 ```
 
-Check to make sure that a Shapely Polygon is created:
+## GeoPandas + WKTs
 
-```python
-type(alaska) # => shapely.geometry.polygon.Polygon
-```
-
-Compute the area of the polygon:
-
-```python
-alaska.area # => 353.4887780300002
-```
-
-## GeoPandas + wkt
-
-Create a GeoPandas DataFrame with `wkt`:
+To create a GeoPandas DataFrame using WKT values from `wkts`:
 
 ```python
 import geopandas as gpd
 import pandas as pd
+import shapely
+import wkts
 
 data = {
     "state": ["colorado", "new_mexico"],
-    "geometry": [from_wkt(wkt.us.states.colorado()), from_wkt(wkt.us.states.new_mexico())]
+    "geometry": [shapely.from_wkt(wkts.us.colorado), shapely.from_wkt(wkts.us.new_mexico)]
 }
 df = pd.DataFrame(data)
 gdf = gpd.GeoDataFrame(df, geometry="geometry")
@@ -78,7 +92,7 @@ Look at the results:
 1  new_mexico  POLYGON ((-109.0448 36.9971,  POINT (-106.10366 34.42267)
 ```
 
-## Sedona + wkt
+## Sedona + WKTs
 
 Read the Overture Maps Foundation places dataset:
 
@@ -123,7 +137,7 @@ Here is how to get the WKT for a city:
 wkt.omf(sedona, table_name).city("US", "US-AZ", "Phoenix") # => "POLYGON((..."
 ```
 
-## Contributing
+# Contributing
 
 Feel free to submit a pull request with additional WKTs!
 
