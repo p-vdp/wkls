@@ -13,23 +13,25 @@ def test_access():
     assert(len(wkts["IN"]["MH"].counties()) == 36)
     assert(len(wkts["IN"]["MH"].cities()) == 321)
 
-    # Pass regex
-    # assert(len(wkts["us"]["ca"]["%San Francisco%"]) == 2)
+    # # print("\n", wkts.us.ca.sanfrancisco)
+    # # print("\n", wkts['us']['ca']['San Francisco'])
+    # print("\ncountries: ")
+    # print(wkts.countries().head(200))
+    # print(wkts.countries().count())
 
-    # print("\n", wkts.us.ca.sanfrancisco)
-    # print("\n", wkts['us']['ca']['San Francisco'])
-    print("\ncountries: ")
-    print(wkts.countries().head(200))
-    print(wkts.countries().count())
-    print("\nregions: ")
-    print(wkts.IN.regions().head(10))
-    print("\counties: ")
-    print(wkts.IN.mh.counties().head(10))
-    print("\ncities: ")
-    print(wkts.IN.mh.cities().head(20))
-    print("\nMumbai: ")
-    print(wkts["in"]["mh"]["%Mumbai City%"])
-    print("\nSan Francisco: ")
-    print(wkts["us"]["ca"]["%San Francisco%"])
+    # print("\nregions: ")
+    # print(wkts.IN.regions().head(10))
+
+    # print("\counties: ")
+    # print(wkts.IN.mh.counties().head(10))
+
+    # print("\ncities: ")
+    # print(wkts.IN.mh.cities().head(20))
+
+    # print("\nMumbai: ")
+    # print(wkts["in"]["mh"]["%Mumbai City%"])
+    
+    # print("\nSan Francisco: ")
+    # print(wkts["us"]["ca"]["%San Francisco%"])
     # print("\nsubtypes: ")
     # print(wkts.subtypes().head(10))

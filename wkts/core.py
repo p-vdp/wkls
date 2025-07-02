@@ -12,7 +12,7 @@ class Wkl:
 
         duckdb.load_extension("spatial")
         if not duckdb.sql("SHOW TABLES").df().query("name == 'wkls'").any().any():
-            print("🧱 Creating 'wkls' table now...")
+            # print("🧱 Creating 'wkls' table now...")
             duckdb.sql(f"""
                 CREATE TABLE wkls AS
                 SELECT id, country, region, subtype, name, division_id
@@ -20,7 +20,7 @@ class Wkl:
             """)
 
         end = time.time()
-        print(f"\nInitialized Wkls for chain in \"{'.'.join(self.chain)}\" in {end - start:.7f} seconds")
+        # print(f"\nInitialized Wkls for chain in \"{'.'.join(self.chain)}\" in {end - start:.7f} seconds")
 
     def __getattr__(self, attr):
         return Wkl(self.chain + [attr.lower()])
@@ -63,11 +63,11 @@ class Wkl:
                   AND subtype IN ('county', 'locality', 'localadmin')
                   AND REPLACE(name, ' ', '') ILIKE REPLACE('{self.chain[2]}', ' ', '')
             """
-            print("QUERY 3:", query)
+            # print("QUERY 3:", query)
         else:
             raise ValueError("Too many chained attributes (max = 3)")
         end = time.time()
-        print(f"\nResolved {'.'.join(self.chain)} in {end - start:.7f} seconds")
+        # print(f"\nResolved {'.'.join(self.chain)} in {end - start:.7f} seconds")
         return duckdb.sql(query).df()
 
     def _get_geom_expr(self, expr: str):
@@ -86,7 +86,7 @@ class Wkl:
         if result_df.empty:
             raise ValueError(f"No geometry found for ID: {geom_id}")
         end = time.time()
-        print(f"\nExecuted geometry query in {end - start:.7f} seconds")
+        # print(f"\nExecuted geometry query in {end - start:.7f} seconds")
         return result_df.iloc[0, 0]
 
     def wkt(self):
@@ -117,7 +117,7 @@ class Wkl:
         """
         df = duckdb.sql(query).df()
         end = time.time()
-        print(f"\nFetched countries in {end - start:.7f} seconds")
+        # print(f"\nFetched countries in {end - start:.7f} seconds")
         return df
 
     def regions(self):
@@ -133,7 +133,7 @@ class Wkl:
             """
             df = duckdb.sql(query).df()
             end = time.time()
-            print(f"\nFetched regions in {end - start:.7f} seconds")
+            # print(f"\nFetched regions in {end - start:.7f} seconds")
             return df
     
     def counties(self):
@@ -151,7 +151,7 @@ class Wkl:
             """
             df = duckdb.sql(query).df()
             end = time.time()
-            print(f"\nFetched counties in {end - start:.7f} seconds")
+            # print(f"\nFetched counties in {end - start:.7f} seconds")
             return df
     
     def cities(self):
@@ -169,7 +169,7 @@ class Wkl:
             """
             df = duckdb.sql(query).df()
             end = time.time()
-            print(f"\nFetched cities in {end - start:.7f} seconds")
+            # print(f"\nFetched cities in {end - start:.7f} seconds")
             return df
         
     def subtypes(self):
@@ -182,5 +182,5 @@ class Wkl:
         """
         df = duckdb.sql(query).df()
         end = time.time()
-        print(f"\nFetched subtypes in {end - start:.7f} seconds")
+        # print(f"\nFetched subtypes in {end - start:.7f} seconds")
         return df
