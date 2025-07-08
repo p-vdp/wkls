@@ -1,141 +1,96 @@
-# WKT (Well-Known Text) geometries for WKLs (Well-Known Locations)
+# 🌐 `wkls`: Well-Known Locations
 
-`wkts` makes it easy to grab Well-Known Text geometry strings for
-Well-Known Locations such as countries, regions and states, and major
-cities around the world.
+`wkls` makes it easy to explore global administrative boundaries — from countries to cities — using clean, chainable Python syntax. It reads directly from [Overture Maps Foundation](https://overturemaps.org/) GeoParquet data hosted on the AWS Open Data Registry.
 
-It's impossible to be comprehensive in this library. If something is
-missing, please propose it and we will work to integrate it! There also
-may be situations with name conflicts that make it impossible to include
-certain locations; as a result, `wkts` is by nature _opinionated_ about
-what is available.
+You can instantly get geometries in formats like WKT, WKB, HexWKB, GeoJSON, and SVG:
 
-`wkts` is interoperable with many Pythonic geospatial tools like
-Shapely, GeoPandas, Sedona, and Dask.
+```python
+import wkls
+print(wkls.us.ca.sanfrancisco.wkt()) # => "MULTIPOLYGON (((-122.9915659 37.7672733...)))"
+```
 
 ## Installation
 
-```
-pip install wkts
+```python
+pip install wkls
 ```
 
-This library doesn't have any dependencies, so it's easy to install anywhere.
+> Requires DuckDB with the spatial extension (loaded automatically). The package is self-contained and lightweight.
 
 ## Usage
 
-`wkts` provides two mechanisms for accessing WKT geometries:
+### 🔹 Accessing geometry
 
-1. A hierarchy of Python attributes that you can access and reference
-   directly; this provides the most direct and efficient access, but
-   isn't exhaustive.
-2. Helpers to query Overture Maps Foundation data using a provided
-   Apache Sedona context, for flexible queries.
+WKLS supports **up to 3 chained attributes**:
+1. **Country** (required) – must be a 2-letter ISO 3166-1 alpha-2 code (e.g. `us`, `de`, `fr`)
+2. **Region** (optional) – must be a valid region ISO code suffix (e.g. `ca` for `US-CA`, `ny` for `US-NY`)
+3. **Place** (optional) – a **name** match against subtypes: `county`, `locality`, or `neighborhood`
 
-### Simple usage
-
-Here's how you can grab the polygon for New York State for example:
-
+Examples:
 ```python
-import wkts
-print(wkt.us.ny) # => "POLYGON((-79.7624 42.5142,-79.0672 42.7783..."
+wkls.us.wkt()                          # country: United States
+wkls.us.ca.wkt()                       # region: California
+wkls.us.ca.sanfrancisco.wkt()          # city/county: San Francisco
+wkls["us"]["ca"]["sanfrancisco"].wkt() # dictionary-style access
 ```
 
-You can also fetch WKTs from the Overture Maps Foundation tables as follows:
+Supported formats:
+- `.wkt()` – Well-Known Text
+- `.wkb()` – Raw binary WKB
+- `.hexwkb()` – Hex-encoded WKB
+- `.geojson()` – GeoJSON string
+- `.svg()` – SVG path string
+
+### 🔎 What does `wkls.us.ca.sanfrancisco` return?
+
+Chained expressions like wkls.us.ca.sanfrancisco return a Wkl object. Internally, this holds a Pandas DataFrame containing one or more rows that match the given chain.
 
 ```python
-table_name = "wherobots_open_data.overture_maps_foundation.divisions_division_area"
-wkt.omf(sedona, table_name).state("US", "US-AZ") # => "POLYGON((..."
+        id           country    region   subtype       name           division_id
+0  085718963fffff...   US       US-CA    county    San Francisco  085718963fffff...
 ```
 
-### Shapely + WKTs
+In most cases, it resolves to a single administrative boundary — for example, San Francisco county or locality. But if there are name collisions (e.g., both a county and a locality called “San Francisco”), multiple rows may be returned.
 
-To create a Shapely geometry using a WKT value from `wkts`:
+By default, geometry methods like `.wkt()` will use the first matching row.
 
-```python
-import shapely
-import wkts
+### 🧠 Helper methods
 
-alaska = shapely.from_wkt(wkts.us.ak)
-print(type(alaska))   # => shapely.geometry.polygon.Polygon
-print(alaska.area)    # => 353.4887780300002
-```
+The following methods return Pandas DataFrames for easy exploration:
 
-## GeoPandas + WKTs
+| Method                     | Description                        |
+|----------------------------|------------------------------------|
+| `wkls.countries()`         | List all countries                 |
+| `wkls.us.regions()`        | List regions in the US             |
+| `wkls.us.ca.counties()`    | List counties in California        |
+| `wkls.us.ca.cities()`      | List cities in California          |
+| `wkls.subtypes()`          | Show all distinct division subtypes |
 
-To create a GeoPandas DataFrame using WKT values from `wkts`:
 
-```python
-import geopandas as gpd
-import pandas as pd
-import shapely
-import wkts
+## How It Works
 
-data = {
-    "state": ["colorado", "new_mexico"],
-    "geometry": [shapely.from_wkt(wkts.us.colorado), shapely.from_wkt(wkts.us.new_mexico)]
-}
-df = pd.DataFrame(data)
-gdf = gpd.GeoDataFrame(df, geometry="geometry")
-```
+WKLS works in two stages:
 
-Add a column with centroids:
+### 1. 🧩 In-memory GERS ID resolution
 
-```python
-gdf['centroid'] = gdf.geometry.centroid
-```
+Your chained attributes — up to 3 levels — are parsed in this order:
 
-Look at the results:
+1. `country` → matched by ISO 2-letter code (e.g. `"us"`)
+2. `region` → matched using region ISO code suffix (e.g. `"ca"` → `"US-CA"`)
+3. `place` → fuzzy-matched against names in subtypes: `county`, `locality`, or `neighborhood`
 
-```python
-        state                     geometry                     centroid
-0    colorado  POLYGON ((-109.0448 37.0004,  POINT (-105.54643 38.99855)
-1  new_mexico  POLYGON ((-109.0448 36.9971,  POINT (-106.10366 34.42267)
-```
+This resolves to a Pandas DataFrame containing one or more rows from the in-memory wkls metadata table. At this stage, no geometry is loaded yet — only metadata (like id, name, region, subtype, etc.).
 
-## Sedona + WKTs
+### 2. 📡 Geometry lookup using DuckDB
 
-Read the Overture Maps Foundation places dataset:
+The geometry lookup is triggered only when you call one of the geometry methods:
+- `.wkt()`
+- `.wkb()`
+- `.hexwkb()`
+- `.geojson()`
+- `.svg()`
 
-```python
-places = sedona.table("wherobots_open_data.overture_maps_foundation.places_place")
-places.createOrReplaceTempView("places")
-```
-
-Find all the barbecue restaurants in the state of Florida:
-
-```python
-query = f"""
-select * from places
-where
-    categories.primary = 'barbecue_restaurant' and
-    ST_Contains(ST_GeomFromWKT('{wkt.us.states.florida()}'), geometry)
-"""
-res = sedona.sql(query)
-res.count() # => 1386
-```
-
-## WKTs from Overture data
-
-It's easy to get the WKT for countries, states, and cities from the Overture data:
-
-Here's how to get the WKT for a country:
-
-```python
-table_name = "wherobots_open_data.overture_maps_foundation.divisions_division_area"
-wkt.omf(sedona, table_name).country("US") # => "POLYGON((..."
-```
-
-Here's how to get the WKT for a state:
-
-```python
-wkt.omf(sedona, table_name).state("US", "US-AZ") # => "POLYGON((..."
-```
-
-Here is how to get the WKT for a city:
-
-```python
-wkt.omf(sedona, table_name).city("US", "US-AZ", "Phoenix") # => "POLYGON((..."
-```
+At that point, WKLS uses the previously resolved **GERS ID** to query the Overture **division_area** GeoParquet directly from S3.
 
 # Contributing
 
