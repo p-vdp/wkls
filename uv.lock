@@ -376,7 +376,7 @@ wheels = [
 [[package]]
 name = "wkls"
 version = "0.2.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "duckdb" },
     { name = "geopandas" },

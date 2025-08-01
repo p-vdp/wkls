@@ -29,6 +29,8 @@ CITY_QUERY = """
 
 def _initialize_table():
     """Initialize the wkls table if it doesn't exist. Called once per module import."""
+    # Install and load the spatial extension
+    duckdb.sql("INSTALL spatial")
     duckdb.load_extension("spatial")
     duckdb.sql(f"""
         CREATE TABLE IF NOT EXISTS wkls AS
