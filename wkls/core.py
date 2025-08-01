@@ -58,7 +58,7 @@ class ChainableDataFrame(pd.DataFrame):
         # Validate chain length immediately
         if len(new_wkl.chain) > 3:
             raise ValueError("Too many chained attributes (max = 3)")
-        if len(new_wkl.chain) in [1, 2, 3]:
+        if len(new_wkl.chain) <= 3:
             df = new_wkl.resolve()
             return ChainableDataFrame(df, new_wkl.chain)
         return new_wkl
@@ -70,7 +70,7 @@ class ChainableDataFrame(pd.DataFrame):
         
         # Otherwise, handle chaining with search patterns
         new_wkl = Wkl(self._chain + [key.lower()])
-        # Validate chain length immediately (unless it's a search pattern)
+        # Validate chain length immediately
         if len(new_wkl.chain) > 3 and '%' not in str(key):
             raise ValueError("Too many chained attributes (max = 3)")
         if '%' in str(key):
@@ -141,14 +141,14 @@ class Wkl:
         if len(new_wkl.chain) > 3:
             raise ValueError("Too many chained attributes (max = 3)")
         # Return ChainableDataFrame for chains of length 1, 2, or 3
-        if len(new_wkl.chain) in [1, 2, 3]:
+        if len(new_wkl.chain) <= 3:
             df = new_wkl.resolve()
             return ChainableDataFrame(df, new_wkl.chain)
         return new_wkl
 
     def __getitem__(self, key):
         new_wkl = Wkl(self.chain + [key.lower()])
-        # Validate chain length immediately (unless it's a search pattern)
+        # Validate chain length immediately
         if len(new_wkl.chain) > 3 and '%' not in key:
             raise ValueError("Too many chained attributes (max = 3)")
         # If this looks like a search pattern (contains %), return DataFrame directly
