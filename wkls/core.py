@@ -6,21 +6,35 @@ import pandas as pd
 
 S3_PARQUET_PATH = "s3://overturemaps-us-west-2/release/2025-05-21.0/theme=divisions/type=division_area/*"
 
-# Module-level initialization flag
-_table_initialized = False
+COUNTRY_QUERY = """
+    SELECT * FROM wkls
+    WHERE country = ?
+      AND subtype = 'country'
+"""
+
+REGION_QUERY = """
+    SELECT * FROM wkls
+    WHERE country = ?
+      AND region = ?
+      AND subtype = 'region'
+"""
+
+CITY_QUERY = """
+    SELECT * FROM wkls
+    WHERE country = ?
+      AND region = ?
+      AND subtype IN ('county', 'locality', 'localadmin')
+      AND REPLACE(name, ' ', '') ILIKE REPLACE(?, ' ', '')
+"""
 
 def _initialize_table():
     """Initialize the wkls table if it doesn't exist. Called once per module import."""
-    global _table_initialized
-    if not _table_initialized:
-        duckdb.load_extension("spatial")
-        if duckdb.sql("SHOW TABLES").df().query("name == 'wkls'").empty:
-            duckdb.sql(f"""
-                CREATE TABLE wkls AS
-                SELECT id, country, region, subtype, name, division_id
-                FROM '{importlib.resources.files(data)}/overture_zstd22.parquet'
-            """)
-        _table_initialized = True
+    duckdb.load_extension("spatial")
+    duckdb.sql(f"""
+        CREATE TABLE IF NOT EXISTS wkls AS
+        SELECT id, country, region, subtype, name, division_id
+        FROM '{importlib.resources.files(data)}/overture_zstd22.parquet'
+    """)
 
 # Initialize the table when the module is imported
 _initialize_table()
@@ -41,6 +55,9 @@ class ChainableDataFrame(pd.DataFrame):
         
         # Continue chaining
         new_wkl = Wkl(self._chain + [attr.lower()])
+        # Validate chain length immediately
+        if len(new_wkl.chain) > 3:
+            raise ValueError("Too many chained attributes (max = 3)")
         if len(new_wkl.chain) in [1, 2, 3]:
             df = new_wkl.resolve()
             return ChainableDataFrame(df, new_wkl.chain)
@@ -53,6 +70,9 @@ class ChainableDataFrame(pd.DataFrame):
         
         # Otherwise, handle chaining with search patterns
         new_wkl = Wkl(self._chain + [key.lower()])
+        # Validate chain length immediately (unless it's a search pattern)
+        if len(new_wkl.chain) > 3 and '%' not in str(key):
+            raise ValueError("Too many chained attributes (max = 3)")
         if '%' in str(key):
             return new_wkl.resolve()
         return new_wkl
@@ -117,6 +137,9 @@ class Wkl:
 
     def __getattr__(self, attr):
         new_wkl = Wkl(self.chain + [attr.lower()])
+        # Validate chain length immediately
+        if len(new_wkl.chain) > 3:
+            raise ValueError("Too many chained attributes (max = 3)")
         # Return ChainableDataFrame for chains of length 1, 2, or 3
         if len(new_wkl.chain) in [1, 2, 3]:
             df = new_wkl.resolve()
@@ -125,6 +148,9 @@ class Wkl:
 
     def __getitem__(self, key):
         new_wkl = Wkl(self.chain + [key.lower()])
+        # Validate chain length immediately (unless it's a search pattern)
+        if len(new_wkl.chain) > 3 and '%' not in key:
+            raise ValueError("Too many chained attributes (max = 3)")
         # If this looks like a search pattern (contains %), return DataFrame directly
         if '%' in key:
             return new_wkl.resolve()
@@ -135,38 +161,21 @@ class Wkl:
 
     def resolve(self):
         if not self.chain:
-            raise ValueError("No attributes in the chain. Use Wkls().country or Wkls().country.region, etc.")
+            raise ValueError("No attributes in the chain. Use wkls.country or wkls.country.region, etc.")
         elif len(self.chain) == 1:
             country_iso = self.chain[0].upper()
-            query = """
-                SELECT * FROM wkls
-                WHERE country = ?
-                  AND subtype = 'country'
-            """
+            query = COUNTRY_QUERY
             params = (country_iso,)
         elif len(self.chain) == 2:
             country_iso = self.chain[0].upper()
             region_iso = country_iso + "-" + self.chain[1].upper()
-            query = """
-                SELECT * FROM wkls
-                WHERE country = ?
-                  AND region = ?
-                  AND subtype = 'region'
-            """
+            query = REGION_QUERY
             params = (country_iso, region_iso)
         elif len(self.chain) == 3:
             country_iso = self.chain[0].upper()
             region_iso = country_iso + "-" + self.chain[1].upper()
-            query = """
-                SELECT * FROM wkls
-                WHERE country = ?
-                  AND region = ?
-                  AND subtype IN ('county', 'locality', 'localadmin')
-                  AND REPLACE(name, ' ', '') ILIKE REPLACE(?, ' ', '')
-            """
+            query = CITY_QUERY
             params = (country_iso, region_iso, self.chain[2])
-        else:
-            raise ValueError("Too many chained attributes (max = 3)")
         return duckdb.sql(query, params=params).df()
 
     def _get_geom_expr(self, expr: str):
@@ -202,7 +211,7 @@ class Wkl:
     
     def countries(self):
         if self.chain:
-            raise ValueError("The 'countries' method does not support chaining. Use Wkls().country or Wkls().country.region, etc.")
+            raise ValueError("countries() can only be called on the root object. Use wkls.countries() instead of chaining.")
         
         query = """
             SELECT DISTINCT id, country, subtype, name, division_id
@@ -214,7 +223,7 @@ class Wkl:
 
     def regions(self):
         if not self.chain or len(self.chain) > 1:
-            raise ValueError("The 'regions' method supports only country or country.region chaining. Use Wkls().country or Wkls().country.region, etc.")
+            raise ValueError("regions() requires exactly one level of chaining. Use wkls.country.regions() to get regions for a country.")
         if len(self.chain) == 1:
             country_iso = self.chain[0].upper()
             query = f"""
@@ -227,9 +236,9 @@ class Wkl:
     
     def counties(self):
         if not self.chain or len(self.chain) > 2:
-            raise ValueError("The 'counties' method supports only country or country.region chaining. Use Wkls().country or Wkls().country.region, etc.")
+            raise ValueError("counties() requires exactly two levels of chaining. Use wkls.country.region.counties() to get counties for a region.")
         if len(self.chain) == 1:
-            raise ValueError("The 'counties' method does not support single-level chaining. Use Wkls().country.region for counties.")
+            raise ValueError("counties() cannot be called on a country alone. Use wkls.country.region.counties() to get counties for a region.")
         if len(self.chain) == 2:
             country_iso = self.chain[0].upper()
             region_iso = country_iso + "-" + self.chain[1].upper()
@@ -243,8 +252,14 @@ class Wkl:
             return df
     
     def cities(self):
-        if not self.chain or len(self.chain) > 3:
-            raise ValueError("The 'cities' method supports only country, country.region, or country.region.city chaining. Use Wkls().country or Wkls().country.region, etc.")
+        if not self.chain:
+            raise ValueError("cities() requires exactly two levels of chaining. Use wkls.country.region.cities() to get cities for a region.")
+        if len(self.chain) == 1:
+            raise ValueError("cities() cannot be called on a country alone. Use wkls.country.region.cities() to get cities for a region.")
+        if len(self.chain) == 3:
+            raise ValueError("cities() cannot be called on a specific city. Use wkls.country.region.cities() to get cities for a region.")
+        if len(self.chain) > 3:
+            raise ValueError("cities() requires exactly two levels of chaining. Use wkls.country.region.cities() to get cities for a region.")
         if len(self.chain) == 2:
             country_iso = self.chain[0].upper()
             region_iso = country_iso + "-" + self.chain[1].upper()
@@ -259,7 +274,7 @@ class Wkl:
         
     def subtypes(self):
         if self.chain:
-            raise ValueError("The 'subtypes' method does not support chaining. Use Wkls().country or Wkls().country.region, etc.")
+            raise ValueError("subtypes() can only be called on the root object. Use wkls.subtypes() instead of chaining.")
             
         query = f"""
             SELECT DISTINCT subtype FROM wkls
