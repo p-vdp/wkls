@@ -5,10 +5,13 @@ import time
 
 S3_PARQUET_PATH = "s3://overturemaps-us-west-2/release/2025-05-21.0/theme=divisions/type=division_area/*"
 
-class Wkl:
-    def __init__(self, chain=None):
-        self.chain = chain or []
+# Module-level initialization flag
+_table_initialized = False
 
+def _initialize_table():
+    """Initialize the wkls table if it doesn't exist. Called once per module import."""
+    global _table_initialized
+    if not _table_initialized:
         duckdb.load_extension("spatial")
         if not duckdb.sql("SHOW TABLES").df().query("name == 'wkls'").any().any():
             duckdb.sql(f"""
@@ -16,6 +19,14 @@ class Wkl:
                 SELECT id, country, region, subtype, name, division_id
                 FROM '{importlib.resources.files(data)}/overture_zstd22.parquet'
             """)
+        _table_initialized = True
+
+# Initialize the table when the module is imported
+_initialize_table()
+
+class Wkl:
+    def __init__(self, chain=None):
+        self.chain = chain or []
 
     def __getattr__(self, attr):
         return Wkl(self.chain + [attr.lower()])
