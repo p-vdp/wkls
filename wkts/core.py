@@ -2,6 +2,7 @@ import duckdb
 import importlib.resources
 from . import data
 import time
+import pandas as pd
 
 S3_PARQUET_PATH = "s3://overturemaps-us-west-2/release/2025-05-21.0/theme=divisions/type=division_area/*"
 
@@ -24,15 +25,110 @@ def _initialize_table():
 # Initialize the table when the module is imported
 _initialize_table()
 
+class ChainableDataFrame(pd.DataFrame):
+    """A DataFrame that maintains chaining capability for the wkts library."""
+    
+    _metadata = ['_chain']
+    
+    def __init__(self, data, chain=None):
+        super().__init__(data)
+        object.__setattr__(self, '_chain', chain or [])
+    
+    def __getattr__(self, attr):
+        # Avoid infinite recursion for pandas internal attributes
+        if attr.startswith('_') or attr in ['_chain']:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{attr}'")
+        
+        # Continue chaining
+        new_wkl = Wkl(self._chain + [attr.lower()])
+        if len(new_wkl.chain) in [1, 2, 3]:
+            df = new_wkl.resolve()
+            return ChainableDataFrame(df, new_wkl.chain)
+        return new_wkl
+    
+    def __getitem__(self, key):
+        # If it's a regular pandas indexing operation, use parent class
+        if isinstance(key, (str, list, slice)) and not (isinstance(key, str) and '%' in key):
+            return super().__getitem__(key)
+        
+        # Otherwise, handle chaining with search patterns
+        new_wkl = Wkl(self._chain + [key.lower()])
+        if '%' in str(key):
+            return new_wkl.resolve()
+        return new_wkl
+    
+    def wkt(self):
+        """Get WKT geometry for the first result."""
+        wkl = Wkl(self._chain)
+        return wkl.wkt()
+    
+    def wkb(self):
+        """Get WKB geometry for the first result."""
+        wkl = Wkl(self._chain)
+        return wkl.wkb()
+    
+    def hexwkb(self):
+        """Get HEX WKB geometry for the first result."""
+        wkl = Wkl(self._chain)
+        return wkl.hexwkb()
+    
+    def geojson(self):
+        """Get GeoJSON geometry for the first result."""
+        wkl = Wkl(self._chain)
+        return wkl.geojson()
+    
+    def svg(self):
+        """Get SVG geometry for the first result."""
+        wkl = Wkl(self._chain)
+        return wkl.svg()
+    
+    def countries(self):
+        """Get all countries."""
+        wkl = Wkl(self._chain)
+        return wkl.countries()
+    
+    def regions(self):
+        """Get regions for the current chain."""
+        wkl = Wkl(self._chain)
+        return wkl.regions()
+    
+    def counties(self):
+        """Get counties for the current chain."""
+        wkl = Wkl(self._chain)
+        return wkl.counties()
+    
+    def cities(self):
+        """Get cities for the current chain."""
+        wkl = Wkl(self._chain)
+        return wkl.cities()
+    
+    def subtypes(self):
+        """Get all subtypes."""
+        wkl = Wkl(self._chain)
+        return wkl.subtypes()
+    
+    @property
+    def _constructor(self):
+        return ChainableDataFrame
+
 class Wkl:
     def __init__(self, chain=None):
         self.chain = chain or []
 
     def __getattr__(self, attr):
-        return Wkl(self.chain + [attr.lower()])
+        new_wkl = Wkl(self.chain + [attr.lower()])
+        # Return ChainableDataFrame for chains of length 1, 2, or 3
+        if len(new_wkl.chain) in [1, 2, 3]:
+            df = new_wkl.resolve()
+            return ChainableDataFrame(df, new_wkl.chain)
+        return new_wkl
 
     def __getitem__(self, key):
-        return Wkl(self.chain + [key.lower()])
+        new_wkl = Wkl(self.chain + [key.lower()])
+        # If this looks like a search pattern (contains %), return DataFrame directly
+        if '%' in key:
+            return new_wkl.resolve()
+        return new_wkl
 
     def __repr__(self):
         return repr(self.resolve())
@@ -42,33 +138,36 @@ class Wkl:
             raise ValueError("No attributes in the chain. Use Wkls().country or Wkls().country.region, etc.")
         elif len(self.chain) == 1:
             country_iso = self.chain[0].upper()
-            query = f"""
+            query = """
                 SELECT * FROM wkls
-                WHERE country = '{country_iso}'
+                WHERE country = ?
                   AND subtype = 'country'
             """
+            params = (country_iso,)
         elif len(self.chain) == 2:
             country_iso = self.chain[0].upper()
             region_iso = country_iso + "-" + self.chain[1].upper()
-            query = f"""
+            query = """
                 SELECT * FROM wkls
-                WHERE country = '{country_iso}'
-                  AND region = '{region_iso}'
+                WHERE country = ?
+                  AND region = ?
                   AND subtype = 'region'
             """
+            params = (country_iso, region_iso)
         elif len(self.chain) == 3:
             country_iso = self.chain[0].upper()
             region_iso = country_iso + "-" + self.chain[1].upper()
-            query = f"""
+            query = """
                 SELECT * FROM wkls
-                WHERE country = '{country_iso}'
-                  AND region = '{region_iso}'
+                WHERE country = ?
+                  AND region = ?
                   AND subtype IN ('county', 'locality', 'localadmin')
-                  AND REPLACE(name, ' ', '') ILIKE REPLACE('{self.chain[2]}', ' ', '')
+                  AND REPLACE(name, ' ', '') ILIKE REPLACE(?, ' ', '')
             """
+            params = (country_iso, region_iso, self.chain[2])
         else:
             raise ValueError("Too many chained attributes (max = 3)")
-        return duckdb.sql(query).df()
+        return duckdb.sql(query, params=params).df()
 
     def _get_geom_expr(self, expr: str):
         df = self.resolve()
