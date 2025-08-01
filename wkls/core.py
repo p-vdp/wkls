@@ -14,7 +14,7 @@ def _initialize_table():
     global _table_initialized
     if not _table_initialized:
         duckdb.load_extension("spatial")
-        if not duckdb.sql("SHOW TABLES").df().query("name == 'wkls'").any().any():
+        if duckdb.sql("SHOW TABLES").df().query("name == 'wkls'").empty:
             duckdb.sql(f"""
                 CREATE TABLE wkls AS
                 SELECT id, country, region, subtype, name, division_id
@@ -243,7 +243,6 @@ class Wkl:
             return df
     
     def cities(self):
-        start = time.time()
         if not self.chain or len(self.chain) > 3:
             raise ValueError("The 'cities' method supports only country, country.region, or country.region.city chaining. Use Wkls().country or Wkls().country.region, etc.")
         if len(self.chain) == 2:
