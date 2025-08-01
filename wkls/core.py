@@ -26,7 +26,7 @@ def _initialize_table():
 _initialize_table()
 
 class ChainableDataFrame(pd.DataFrame):
-    """A DataFrame that maintains chaining capability for the wkts library."""
+    """A DataFrame that maintains chaining capability for the wkls library."""
     
     _metadata = ['_chain']
     

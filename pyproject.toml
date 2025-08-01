@@ -1,5 +1,5 @@
 [project]
-name = "wkts"
+name = "wkls"
 version = "0.2.0"
 description = "WKTs for WKLs: a library for easily leveraging the WKTs (Well Known Text) geometries of WKLs (Well Known Locations)"
 readme = "README.md"
