@@ -140,7 +140,7 @@ class Wkl:
         # Validate chain length immediately
         if len(new_wkl.chain) > 3:
             raise ValueError("Too many chained attributes (max = 3)")
-        # Return ChainableDataFrame for chains of length 1, 2, or 3
+
         if len(new_wkl.chain) <= 3:
             df = new_wkl.resolve()
             return ChainableDataFrame(df, new_wkl.chain)
