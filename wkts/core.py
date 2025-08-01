@@ -129,6 +129,8 @@ class Wkl:
     def counties(self):
         if not self.chain or len(self.chain) > 2:
             raise ValueError("The 'counties' method supports only country or country.region chaining. Use Wkls().country or Wkls().country.region, etc.")
+        if len(self.chain) == 1:
+            raise ValueError("The 'counties' method does not support single-level chaining. Use Wkls().country.region for counties.")
         if len(self.chain) == 2:
             country_iso = self.chain[0].upper()
             region_iso = country_iso + "-" + self.chain[1].upper()
