@@ -32,3 +32,19 @@ def test_access():
         assert subtype in subtypes_df["subtype"].values, (
             f"Subtype '{subtype}' should exist"
         )
+
+
+def test_overture_version():
+    """Test that the Overture Maps dataset version is accessible."""
+    # Should work at root level
+    assert hasattr(wkls, "overture_version")
+    version = wkls.overture_version()
+    assert isinstance(version, str)
+    assert "2025-05-21.0" in version  # Current version
+    print(f"Using Overture Maps dataset version: {version}")
+
+    # Should NOT work on chained objects - method should not exist
+    assert not hasattr(wkls.us, "overture_version")
+    print(
+        "Correctly blocked chained access: wkls.us does not have overture_version method"
+    )

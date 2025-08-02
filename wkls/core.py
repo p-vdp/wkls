@@ -3,7 +3,9 @@ import importlib.resources
 from . import data
 import pandas as pd
 
-S3_PARQUET_PATH = "s3://overturemaps-us-west-2/release/2025-05-21.0/theme=divisions/type=division_area/*"
+# Overture Maps dataset version
+OVERTURE_VERSION = "2025-05-21.0"
+S3_PARQUET_PATH = f"s3://overturemaps-us-west-2/release/{OVERTURE_VERSION}/theme=divisions/type=division_area/*"
 
 COUNTRY_QUERY = """
     SELECT * FROM wkls
@@ -57,6 +59,12 @@ class ChainableDataFrame(pd.DataFrame):
         if attr.startswith("_") or attr in ["_chain"]:
             raise AttributeError(
                 f"'{self.__class__.__name__}' object has no attribute '{attr}'"
+            )
+
+        # Block root-level only methods
+        if attr == "overture_version":
+            raise AttributeError(
+                f"'{attr}' is only available at the root level. Use wkls.{attr}(), not on chained objects."
             )
 
         # Continue chaining
@@ -143,6 +151,18 @@ class ChainableDataFrame(pd.DataFrame):
 class Wkl:
     def __init__(self, chain=None):
         self.chain = chain or []
+
+    def overture_version(self):
+        """Return the version of the Overture Maps dataset being used.
+
+        This method is only available at the root level (wkls.overture_version()),
+        not on chained objects.
+        """
+        if self.chain:
+            raise ValueError(
+                "overture_version() is only available at the root level. Use wkls.overture_version(), not wkls.us.overture_version()."
+            )
+        return OVERTURE_VERSION
 
     def __getattr__(self, attr):
         new_wkl = Wkl(self.chain + [attr.lower()])

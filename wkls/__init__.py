@@ -1,5 +1,8 @@
 import sys
 from .core import Wkl
 
-# Replace the module with an instance of Wkls
-sys.modules[__name__] = Wkl()
+# Create the main instance
+wkls_instance = Wkl()
+
+# Replace the module with the instance
+sys.modules[__name__] = wkls_instance
