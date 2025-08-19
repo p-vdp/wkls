@@ -3,15 +3,13 @@ name = "wkls"
 version = "0.2.0"
 description = "Easy access to global administrative boundaries and geometries via Overture Maps data"
 readme = "README.md"
-license = { file = "LICENCE" }
+license = "Apache-2.0"
 requires-python = ">=3.9"
 keywords = ["gis", "geography", "boundaries", "geospatial", "overture-maps", "wkt", "geometry", "admin boundaries", "geojson", "spatial"]
-
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
