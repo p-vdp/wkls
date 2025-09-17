@@ -237,8 +237,10 @@ class Wkl:
     def geojson(self):
         return self._get_geom_expr("ST_AsGeoJSON(geometry)")
 
-    def svg(self):
-        return self._get_geom_expr("ST_AsSVG(geometry)")
+    def svg(self, relative: bool = False, precision: int = 15):
+        return self._get_geom_expr(
+            f"ST_AsSVG(geometry, {str(relative).lower()}, {precision})"
+        )
 
     def countries(self):
         if self.chain:
